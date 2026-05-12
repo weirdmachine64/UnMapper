@@ -11,7 +11,7 @@
 ## Features
 
 - Discovers JS bundles from `<script>` tags during a page crawl
-- Recovers webpack chunks from manifests + `.u` functions, including the **if-cascade** shape used by GitHub (where each chunk is enumerated explicitly rather than via a formula)
+- Recovers webpack chunks from manifests + `.u` functions
 - Handles both inline (`data:application/json;base64,...`) and external sourcemaps
 - Probes `.js.map` paths when no `sourceMappingURL` comment is present (toggle with `--no-guess`)
 - Async with configurable concurrency
