@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "unmapper"
+version = "0.1.0"
+description = "Sourcemap crawler and unpacker. Crawls a target, finds its JavaScript, and reconstructs the original source tree from any sourcemaps it ships"
+readme = { text = "Run `unmapper --help` after install.", content-type = "text/plain" }
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Mohamed Benchikh" }]
+keywords = ["sourcemap", "webpack", "vite", "reverse-engineering", "security", "bug-bounty"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Security",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Internet :: WWW/HTTP",
+]
+dependencies = [
+    "aiohttp>=3.9",
+    "beautifulsoup4>=4.12",
+    "rich>=13.0",
+]
+
+[project.scripts]
+unmapper = "unmapper:main"
+
+[tool.setuptools]
+py-modules = ["unmapper"]
