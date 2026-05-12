@@ -1,7 +1,7 @@
 <h1 align="center">UnMapper</h1>
 
 <p align="center">
-  Sourcemap crawler and unpacker. Crawls a target, finds its JavaScript, and reconstructs the original source tree from any sourcemaps it ships.
+  Sourcemap crawler and unpacker. Crawls a target, finds its javascript, and reconstructs the original source tree from any discovered sourcemaps
 </p>
 
 <p align="center">
