@@ -60,6 +60,7 @@ options:
   -v, --verbose         Stream activity log
   --no-guess            Don't probe .js.map paths when no sourceMappingURL comment
                         exists. Probing is on by default.
+  -k, --insecure        Skip TLS certificate verification
 ```
 
 ## Running UnMapper
@@ -86,6 +87,12 @@ Skip the `.js.map` probe and only follow explicit `sourceMappingURL=` comments:
 
 ```sh
 unmapper https://example.com --no-guess
+```
+
+Skip TLS certificate verification (hosts whose cert does not match the hostname):
+
+```sh
+unmapper https://example.com -k
 ```
 
 ## Output

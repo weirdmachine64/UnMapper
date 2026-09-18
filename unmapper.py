@@ -179,12 +179,14 @@ class SourceMapExtractor:
         timeout: int = 30,
         verbose: bool = False,
         guess_maps: bool = True,
+        insecure: bool = False,
         ui: Optional[UI] = None,
     ):
         self.output_dir = output_dir
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.verbose = verbose
         self.guess_maps = guess_maps
+        self.insecure = insecure
         self.ui = ui
 
         self.seen_js: set = set()
@@ -222,6 +224,28 @@ class SourceMapExtractor:
                         return None
                     return await (r.read() if binary
                                   else r.text(errors='replace'))
+            except aiohttp.ClientConnectorCertificateError:
+                host = urlparse(url).hostname or url
+                self.stats.errors.append(
+                    f"{url}: TLS certificate verification failed "
+                    f"(certificate is not valid for {host})"
+                )
+                if self.verbose:
+                    self.ui and self.ui.log(
+                        "✗", "tls",
+                        f"cert mismatch {self._short(url)}",
+                        style="red",
+                    )
+                return None
+            except aiohttp.ClientSSLError as e:
+                self.stats.errors.append(f"{url}: TLS error: {e}")
+                if self.verbose:
+                    self.ui and self.ui.log(
+                        "✗", "tls",
+                        f"{type(e).__name__} {self._short(url)}",
+                        style="red",
+                    )
+                return None
             except Exception as e:
                 self.stats.errors.append(
                     f"{url}: {type(e).__name__}: {e}"
@@ -571,7 +595,10 @@ class SourceMapExtractor:
         return '/'.join(parts)
 
     async def run(self, seeds):
-        connector = aiohttp.TCPConnector(limit=20, ssl=True)
+        # ssl=False skips hostname + chain checks (curl -k).
+        connector = aiohttp.TCPConnector(
+            limit=20, ssl=False if self.insecure else True,
+        )
         headers = {
             'User-Agent': (
                 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
@@ -619,7 +646,7 @@ def render_banner(console):
     )
 
 
-def render_header(console, seeds, output, concurrency):
+def render_header(console, seeds, output, concurrency, insecure=False):
     body = Text()
     body.append("Targets:  ", style="bold")
     body.append(", ".join(seeds[:3]) +
@@ -628,6 +655,9 @@ def render_header(console, seeds, output, concurrency):
     body.append(str(output))
     body.append("\nWorkers:  ", style="bold")
     body.append(str(concurrency))
+    if insecure:
+        body.append("\nTLS:      ", style="bold")
+        body.append("verification disabled (-k)", style="yellow")
     console.print(Panel(
         body, title="[bold cyan]Sourcemap crawler and unpacker[/]",
         border_style="cyan", padding=(1, 2),
@@ -673,6 +703,15 @@ def render_summary(console, stats: Stats, output: Path, elapsed: float):
         console.print(f"\n[red]First {min(5, len(stats.errors))} errors:[/]")
         for e in stats.errors[:5]:
             console.print(f"  [dim]·[/] {e}")
+        tls_errs = sum(
+            1 for e in stats.errors
+            if 'TLS certificate' in e or e.find(': TLS ') != -1
+        )
+        if tls_errs:
+            console.print(
+                "\n[dim]Hint: retry with -k/--insecure to skip TLS "
+                "certificate verification[/]"
+            )
 
 
 def normalize_url(u: str) -> str:
@@ -708,6 +747,9 @@ def main():
     p.add_argument('--no-guess', action='store_true',
                    help="Don't probe .js.map paths when no sourceMappingURL "
                         "comment exists. Probing is on by default.")
+    p.add_argument('-k', '--insecure', action='store_true',
+                   help='Skip TLS certificate verification (hosts whose '
+                        'cert does not match the hostname)')
     args = p.parse_args()
 
     base_output = Path(args.output).resolve()
@@ -744,7 +786,8 @@ def main():
             console.rule(f"[bold cyan]Target {i}/{total}[/]  {seed}",
                          style="cyan")
 
-        render_header(console, [seed], target_output, args.threads)
+        render_header(console, [seed], target_output, args.threads,
+                      insecure=args.insecure)
 
         # Live UI only when stderr is an interactive terminal; skip it in
         # CI, pipes, redirects, etc. so progress frames don't pollute logs.
@@ -755,6 +798,7 @@ def main():
             timeout=args.timeout,
             verbose=args.verbose,
             guess_maps=not args.no_guess,
+            insecure=args.insecure,
             ui=ui,
         )
 
